@@ -9,3 +9,6 @@ venv/
 .DS_Store
 outputs/runs/*
 !outputs/runs/.gitkeep
+build/
+dist/
+outputs/runs.zip
