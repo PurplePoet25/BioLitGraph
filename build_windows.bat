@@ -4,15 +4,19 @@ setlocal
 if not exist .venv (
     py -m venv .venv
 )
+
 call .venv\Scripts\activate
 py -m pip install --upgrade pip
 py -m pip install -r requirements-build.txt
 
 py -m PyInstaller --noconfirm --clean --windowed --name BioLitGraph ^
   --icon assets\icons\biolitgraph_icon.ico ^
+  --collect-data certifi ^
+  --hidden-import certifi ^
   --add-data "templates;templates" ^
   --add-data "static;static" ^
   --add-data "data;data" ^
+  --add-data "assets;assets" ^
   launcher.py
 
 echo.
