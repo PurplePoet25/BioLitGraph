@@ -1,0 +1,32 @@
+pmid,entity_id,entity_text,entity_type,normalized_id,source_passage,char_offset,length
+39700101,Gene:EGFR,EGFR,Gene,EGFR,abstract,0,4
+39700101,Disease:NSCLC,non-small cell lung cancer,Disease,MESH:D002289,abstract,10,27
+39700101,Variant:EGFR_exon19del,exon 19 deletion,Variant,EGFR_EX19DEL,abstract,40,15
+39700102,Gene:EGFR,EGFR,Gene,EGFR,abstract,0,4
+39700102,Disease:NSCLC,NSCLC,Disease,MESH:D002289,abstract,10,5
+39700102,Chemical:Osimertinib,osimertinib,Chemical,MESH:C000620288,abstract,20,11
+39700102,Variant:EGFR_L858R,L858R,Variant,EGFR_L858R,abstract,35,5
+39700103,Gene:EGFR,EGFR,Gene,EGFR,abstract,0,4
+39700103,Disease:NSCLC,lung adenocarcinoma,Disease,MESH:D002289,abstract,10,18
+39700103,Variant:EGFR_T790M,T790M,Variant,EGFR_T790M,abstract,30,5
+39700103,Chemical:Gefitinib,gefitinib,Chemical,MESH:C101425,abstract,40,9
+39700104,Gene:EGFR,epidermal growth factor receptor,Gene,EGFR,abstract,0,34
+39700104,Disease:NSCLC,non-small cell lung cancer,Disease,MESH:D002289,abstract,40,27
+39700104,Variant:EGFR_exon19del,EGFR exon 19 deletion,Variant,EGFR_EX19DEL,abstract,70,21
+39700104,Chemical:Gefitinib,gefitinib,Chemical,MESH:C101425,abstract,95,9
+39700105,Gene:EGFR,EGFR,Gene,EGFR,abstract,0,4
+39700105,Disease:NSCLC,NSCLC,Disease,MESH:D002289,abstract,10,5
+39700105,Variant:EGFR_L858R,L858R,Variant,EGFR_L858R,abstract,25,5
+39700105,Variant:EGFR_exon19del,exon 19 deletion,Variant,EGFR_EX19DEL,abstract,35,15
+39700106,Gene:EGFR,EGFR,Gene,EGFR,abstract,0,4
+39700106,Disease:NSCLC,non-small cell lung cancer,Disease,MESH:D002289,abstract,10,27
+39700106,Chemical:Osimertinib,osimertinib,Chemical,MESH:C000620288,abstract,40,11
+39700106,Chemical:Afatinib,afatinib,Chemical,MESH:C562447,abstract,55,8
+39700106,Variant:EGFR_T790M,T790M,Variant,EGFR_T790M,abstract,70,5
+39700107,Gene:EGFR,EGFR,Gene,EGFR,abstract,0,4
+39700107,Disease:NSCLC,NSCLC,Disease,MESH:D002289,abstract,10,5
+39700107,Chemical:Osimertinib,osimertinib,Chemical,MESH:C000620288,abstract,25,11
+39700108,Gene:EGFR,EGFR,Gene,EGFR,abstract,0,4
+39700108,Disease:NSCLC,non-small cell lung cancer,Disease,MESH:D002289,abstract,10,27
+39700108,Variant:EGFR_T790M,T790M,Variant,EGFR_T790M,abstract,45,5
+39700108,Chemical:Osimertinib,osimertinib,Chemical,MESH:C000620288,abstract,55,11

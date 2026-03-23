@@ -1,0 +1,8 @@
+pmid,source_id,target_id,relation_label,edge_kind
+39700102,Gene:EGFR,Chemical:Osimertinib,treat,relation
+39700102,Chemical:Osimertinib,Disease:NSCLC,treat,relation
+39700103,Variant:EGFR_T790M,Chemical:Gefitinib,resistance,relation
+39700104,Variant:EGFR_exon19del,Chemical:Gefitinib,predicts_response,relation
+39700105,Variant:EGFR_L858R,Disease:NSCLC,associate,relation
+39700106,Chemical:Afatinib,Chemical:Osimertinib,sequential_therapy,relation
+39700108,Variant:EGFR_T790M,Chemical:Osimertinib,treat,relation

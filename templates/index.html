@@ -1,0 +1,250 @@
+{% extends 'base.html' %}
+{% block body %}
+<div class="page-shell">
+  <header class="hero">
+    <div class="hero-copy">
+      <div class="eyebrow">Biomedical literature mining • knowledge graphs • local-first Flask app</div>
+      <h1>BioLitGraph</h1>
+      <p class="lede">
+        Turn a PubMed topic into a living network of genes, diseases, chemicals, and variants.
+        Search papers, pull annotations from PubTator, and explore the biology as a graph instead of a pile of abstracts.
+      </p>
+      <div class="hero-pills">
+        <span>PubMed retrieval</span>
+        <span>PubTator annotation</span>
+        <span>Graph analytics</span>
+        <span>Interactive front end</span>
+      </div>
+    </div>
+    <div class="hero-panel">
+      <form method="post" action="{{ url_for('analyze') }}" class="query-form">
+        <label for="query">PubMed topic</label>
+        <input id="query" name="query" type="text" placeholder="EGFR AND non-small cell lung cancer" value="{{ submitted_query or '' }}">
+
+        <div class="form-grid">
+          <div>
+            <label for="retmax">Paper limit</label>
+            <input id="retmax" name="retmax" type="number" min="5" max="100" value="{{ submitted_retmax or 60 }}">
+          </div>
+          <div>
+            <label for="source">Mode</label>
+            <select id="source" name="source">
+              <option value="live" {% if submitted_source != 'demo' %}selected{% endif %}>Live APIs</option>
+              <option value="demo" {% if submitted_source == 'demo' %}selected{% endif %}>Bundled demo</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="submit" class="primary-btn">Build graph</button>
+        <p class="help-text">Demo mode lets you test the full UI instantly. Live mode calls PubMed + PubTator.</p>
+      </form>
+
+      <div class="preset-box">
+        <div class="preset-title">Good starter queries</div>
+        <div class="preset-list">
+          {% for preset in presets %}
+          <button type="button" class="preset-chip" data-preset="{{ preset }}">{{ preset }}</button>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section class="how-it-works">
+    <div class="section-head">
+      <h2>How it works, in normal human language</h2>
+      <p>The project is built in layers so you can explain both the pretty front end and the science-y plumbing behind it.</p>
+    </div>
+    <div class="layer-grid">
+      <article class="layer-card">
+        <span class="layer-number">01</span>
+        <h3>Retrieval layer</h3>
+        <p>You type a topic. BioLitGraph asks PubMed for the most relevant papers and grabs each paper’s basic metadata: title, journal, date, and PMID.</p>
+      </article>
+      <article class="layer-card">
+        <span class="layer-number">02</span>
+        <h3>Annotation layer</h3>
+        <p>Those PMIDs get sent to PubTator, which tags the biology inside the literature — like genes, diseases, chemicals, and variants — and tries to normalize them into standard IDs.</p>
+      </article>
+      <article class="layer-card">
+        <span class="layer-number">03</span>
+        <h3>Graph layer</h3>
+        <p>The backend collapses repeated mentions into one entity node, links entities that appear together, counts how many papers support each connection, and saves the results as tables plus graph JSON.</p>
+      </article>
+      <article class="layer-card">
+        <span class="layer-number">04</span>
+        <h3>App layer</h3>
+        <p>The browser turns that graph JSON into an interactive network. Click a node or edge and the details panel shows what it is, how connected it is, and which papers support it.</p>
+      </article>
+    </div>
+  </section>
+
+  {% if error %}
+  <section class="alert-box">
+    <strong>Heads up:</strong> {{ error }}
+  </section>
+  {% endif %}
+
+  {% if bundle %}
+  <section class="results-shell">
+    <div class="section-head compact">
+      <h2>Results for “{{ bundle.summary.query }}”</h2>
+      <p>Run ID: <code>{{ bundle.run_id }}</code> • Source: <strong>{{ bundle.summary.source }}</strong></p>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card"><span>Papers</span><strong>{{ bundle.summary.paper_count }}</strong></div>
+      <div class="stat-card"><span>Entity mentions</span><strong>{{ bundle.summary.entity_mentions }}</strong></div>
+      <div class="stat-card"><span>Unique entities</span><strong>{{ bundle.summary.unique_entities }}</strong></div>
+      <div class="stat-card"><span>Edges</span><strong>{{ bundle.summary.edge_count }}</strong></div>
+      <div class="stat-card"><span>Date range</span><strong>{{ bundle.summary.date_range }}</strong></div>
+      <div class="stat-card"><span>Signal quality</span><strong>{{ bundle.summary.signal|capitalize }}</strong></div>
+    </div>
+
+
+    {% if bundle.summary.signal == "low" %}
+    <section class="alert-box soft-warning">
+      <strong>Low-signal run:</strong> this topic produced a sparse graph after filtering. Broader queries, synonyms with <code>OR</code>, or a more targeted disease/gene pair usually work better.
+    </section>
+    {% endif %}
+
+    <div class="results-grid">
+      <div class="panel graph-panel">
+        <div class="panel-head">
+          <h3>Interactive knowledge graph</h3>
+          <p>Node size roughly tracks how many papers mention that entity.</p>
+        </div>
+        <div id="graph-network"></div>
+      </div>
+
+      <aside class="panel details-panel">
+        <div class="panel-head">
+          <h3>Details</h3>
+          <p>Click a node or edge in the graph.</p>
+        </div>
+        <div id="details-content" class="details-content empty-state">
+          <p>Nothing selected yet. Poke the graph. It likes attention.</p>
+        </div>
+      </aside>
+    </div>
+
+    <div class="two-col-grid">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Publication timeline</h3>
+          <p>How the literature volume shifts across years.</p>
+        </div>
+        <div id="timeline-chart"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Top edges by support</h3>
+          <p>These are the strongest connections after filtering noisy one-off mentions.</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Source</th>
+                <th>Target</th>
+                <th>Kind</th>
+                <th>Support</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for edge in bundle.top_edges %}
+              <tr>
+                <td>{{ edge.source_label }}</td>
+                <td>{{ edge.target_label }}</td>
+                <td>{{ edge.relation_label or edge.edge_kind }}</td>
+                <td>{{ edge.support_count }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h3>Top entities by type</h3>
+        <p>This is where the graph becomes interpretable instead of becoming sentient spaghetti.</p>
+      </div>
+      <div class="entity-type-grid">
+        {% for entity_type, rows in bundle.top_entities_by_type.items() %}
+        <div class="entity-card">
+          <h4>{{ entity_type }}</h4>
+          <ul>
+            {% for row in rows %}
+            <li>
+              <span>{{ row.label }}</span>
+              <strong>{{ row.support_count }}</strong>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h3>Papers pulled into this run</h3>
+        <p>These are the records the rest of the pipeline is built on.</p>
+      </div>
+      <div class="table-wrap tall">
+        <table>
+          <thead>
+            <tr>
+              <th>PMID</th>
+              <th>Title</th>
+              <th>Journal</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for paper in bundle.papers %}
+            <tr>
+              <td><a href="https://pubmed.ncbi.nlm.nih.gov/{{ paper.pmid }}/" target="_blank" rel="noreferrer">{{ paper.pmid }}</a></td>
+              <td>{{ paper.title }}</td>
+              <td>{{ paper.journal }}</td>
+              <td>{{ paper.pub_date }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel subtle-panel">
+      <div class="panel-head">
+        <h3>Run diagnostics</h3>
+        <p>These help explain how much cleanup happened before the final graph was shown.</p>
+      </div>
+      <div class="diagnostics-grid">
+        <div><span>Raw nodes</span><strong>{{ bundle.diagnostics.raw_node_count }}</strong></div>
+        <div><span>Generic nodes removed</span><strong>{{ bundle.diagnostics.generic_nodes_removed }}</strong></div>
+        <div><span>Isolated nodes removed</span><strong>{{ bundle.diagnostics.isolated_nodes_removed }}</strong></div>
+        <div><span>Final graph</span><strong>{{ bundle.diagnostics.final_node_count }} nodes / {{ bundle.diagnostics.final_edge_count }} edges</strong></div>
+      </div>
+    </div>
+
+    <div class="output-note panel subtle-panel">
+      <h3>Files written for this run</h3>
+      <ul>
+        <li><code>{{ bundle.outputs.papers_csv }}</code></li>
+        <li><code>{{ bundle.outputs.entities_csv }}</code></li>
+        <li><code>{{ bundle.outputs.relations_csv }}</code></li>
+        <li><code>{{ bundle.outputs.graph_json }}</code></li>
+      </ul>
+    </div>
+  </section>
+
+  <script>
+    window.BioLitGraphData = {{ bundle | tojson }};
+  </script>
+  {% endif %}
+</div>
+{% endblock %}
