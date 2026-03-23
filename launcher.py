@@ -114,14 +114,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()        host='127.0.0.1',
-        port=port,
-        threads=6,
-        connection_limit=100,
-        cleanup_interval=30,
-        channel_timeout=60,
-    )
-
-
-if __name__ == '__main__':
     main()
