@@ -2,17 +2,26 @@
 
 from PyInstaller.utils.hooks import collect_submodules, collect_data_files
 
-hiddenimports = collect_submodules('waitress') + ['certifi']
-datas = collect_data_files('certifi') + [
-    ('templates', 'templates'),
-    ('static', 'static'),
-    ('data', 'data'),
-    ('assets', 'assets'),
-]
+hiddenimports = (
+    ['app', 'certifi']
+    + collect_submodules('src')
+    + collect_submodules('src.clients')
+    + collect_submodules('waitress')
+)
+
+datas = (
+    collect_data_files('certifi')
+    + [
+        ('templates', 'templates'),
+        ('static', 'static'),
+        ('data', 'data'),
+        ('assets', 'assets'),
+    ]
+)
 
 a = Analysis(
     ['launcher.py'],
-    pathex=[],
+    pathex=['.'],
     binaries=[],
     datas=datas,
     hiddenimports=hiddenimports,
