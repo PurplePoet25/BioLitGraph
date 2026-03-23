@@ -14,13 +14,10 @@ if not exist assets mkdir assets
 for /f "usebackq delims=" %%I in (`py -c "import certifi; print(certifi.where())"`) do set CERTIFI_PEM=%%I
 copy /Y "%CERTIFI_PEM%" "assets\cacert.pem" >nul
 
-py -m PyInstaller --noconfirm --clean --windowed --name BioLitGraph ^
-  --icon assets\icons\biolitgraph_icon.ico ^
-  --add-data "templates;templates" ^
-  --add-data "static;static" ^
-  --add-data "data;data" ^
-  --add-data "assets;assets" ^
-  launcher.py
+if exist build rmdir /s /q build
+if exist dist rmdir /s /q dist
+
+py -m PyInstaller --noconfirm --clean BioLitGraph.spec
 
 echo.
 echo Build finished. Open dist\BioLitGraph\BioLitGraph.exe
