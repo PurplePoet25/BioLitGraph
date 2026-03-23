@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import os
@@ -47,6 +46,8 @@ class Settings:
     user_data_dir: Path = USER_DATA_DIR
     data_dir: Path = BASE_DIR / 'data'
     demo_dir: Path = BASE_DIR / 'data' / 'demo'
+    assets_dir: Path = BASE_DIR / 'assets'
+    ca_bundle_path: Path = BASE_DIR / 'assets' / 'cacert.pem'
     outputs_dir: Path = USER_DATA_DIR / 'outputs'
     runs_dir: Path = USER_DATA_DIR / 'outputs' / 'runs'
     raw_dir: Path = USER_DATA_DIR / 'data' / 'raw'
