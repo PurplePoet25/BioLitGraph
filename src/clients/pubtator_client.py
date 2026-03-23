@@ -12,26 +12,22 @@ class PubTatorClient:
     def __init__(self) -> None:
         self.session = requests.Session()
         self.throttler = RequestThrottler(2.8)
+        self.verify = str(settings.ca_bundle_path) if settings.ca_bundle_path.is_file() else True
+        self.session.verify = self.verify
 
     def _get(self, endpoint: str, params: dict[str, Any], timeout: int | None = None) -> requests.Response:
-        """Make a tolerant GET request.
-
-        PubTator's export endpoints appear to be sensitive to explicit Accept headers on some
-        representations, so we let requests send its default Accept: */* and only fall back to
-        an explicit header if needed.
-        """
         self.throttler.wait()
         response = self.session.get(
             f'{settings.pubtator_base_url}{endpoint}',
             params=params,
             timeout=timeout or settings.request_timeout,
         )
-        # If the server refuses content negotiation, retry without any session-level oddities.
         if response.status_code == 406:
             fresh = requests.get(
                 f'{settings.pubtator_base_url}{endpoint}',
                 params=params,
                 timeout=timeout or settings.request_timeout,
+                verify=self.verify,
             )
             return fresh
         return response
@@ -42,7 +38,6 @@ class PubTatorClient:
 
         documents: list[dict[str, Any]] = []
         wrapper_payloads: list[dict[str, Any]] = []
-        # Keep chunks modest; smaller batches are more tolerant of PubTator hiccups.
         for start in range(0, len(pmids), 25):
             chunk = pmids[start:start + 25]
             response = self._get(
@@ -70,7 +65,6 @@ class PubTatorClient:
             return ''
 
         chunks: list[str] = []
-        # Be extra conservative for the plain-text fallback.
         for start in range(0, len(pmids), 10):
             chunk = pmids[start:start + 10]
             response = self._get(
@@ -78,7 +72,6 @@ class PubTatorClient:
                 params={'pmids': ','.join(chunk)},
             )
             if response.status_code == 406 and len(chunk) > 1:
-                # Fall back to one PMID at a time instead of killing the whole run.
                 for pmid in chunk:
                     single = self._get('/publications/export/pubtator', params={'pmids': pmid})
                     if single.ok and single.text.strip():
