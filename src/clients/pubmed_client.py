@@ -12,6 +12,8 @@ class PubMedClient:
     def __init__(self) -> None:
         self.session = requests.Session()
         self.throttler = RequestThrottler(settings.ncbi_requests_per_second)
+        self.verify = str(settings.ca_bundle_path) if settings.ca_bundle_path.is_file() else True
+        self.session.verify = self.verify
 
     def _request(self, endpoint: str, params: dict[str, Any]) -> dict[str, Any]:
         self.throttler.wait()
@@ -22,6 +24,7 @@ class PubMedClient:
         }
         if settings.ncbi_api_key:
             payload['api_key'] = settings.ncbi_api_key
+
         response = self.session.get(
             f'{settings.ncbi_base_url}/{endpoint}',
             params=payload,
