@@ -1,12 +1,45 @@
 # BioLitGraph
 
-BioLitGraph is a local biomedical literature intelligence tool. You give it a topic like **EGFR AND non-small cell lung cancer**, and it pulls relevant PubMed papers, asks PubTator to mark the biological entities inside those papers, then turns the whole thing into an interactive knowledge graph you can explore in your browser.
+**BioLitGraph** is a local biomedical literature mining tool that turns PubMed search results into an interactive knowledge graph.
 
-This project is meant to feel like more than “a dashboard with a biology sticker.” The real story is this:
+You enter a biomedical topic such as:
 
-> **BioLitGraph converts messy biomedical literature into structured, explorable biological knowledge.**
+- `BRCA1 AND breast cancer`
+- `TP53 AND acute myeloid leukemia`
+- `(EGFR OR ERBB1) AND "non-small cell lung cancer"`
 
-That means the project shows API work, biomedical NLP, entity normalization, graph analytics, data cleaning, and front-end thinking in one repo.
+BioLitGraph then:
+
+1. searches PubMed for relevant papers  
+2. collects paper metadata  
+3. retrieves biomedical annotations from PubTator  
+4. extracts normalized entities such as genes, diseases, chemicals, and variants  
+5. builds an interactive graph showing how those entities connect across the literature  
+
+The result is a faster, more visual way to explore a topic before diving deep into individual papers.
+
+---
+
+## Why this project exists
+
+Biomedical literature is huge, messy, and hard to scan quickly.
+
+Normally, exploring a topic means opening dozens of papers, skimming titles and abstracts, writing down repeated concepts, and slowly building a mental map of the field.
+
+BioLitGraph helps with that first step.
+
+It does **not** replace reading papers. It helps you understand the **shape of a topic** before you go deeper.
+
+In simple terms, BioLitGraph answers a question like:
+
+> **If I search a biomedical topic, what genes, diseases, drugs, and variants keep showing up together across the literature?**
+
+That makes it useful for:
+- quick literature exploration
+- early-stage hypothesis building
+- topic familiarization
+- teaching and demos
+- portfolio demonstration of biomedical NLP, graph analytics, and data engineering
 
 ---
 
@@ -20,253 +53,220 @@ For a single topic query, BioLitGraph can:
 - extract **genes, diseases, chemicals, variants, and cell lines**
 - collapse repeated mentions into normalized entities
 - build a graph where nodes are entities and edges are connections supported by papers
-- show top entities, top edges, a timeline, a paper table, and a click-to-inspect graph
-- save the run as CSV + JSON outputs
+- show top entities, top edges, a publication timeline, a paper table, and a click-to-inspect graph
+- save each run as CSV and JSON outputs
 
-There is also a **bundled demo mode** so the full UI can be tested immediately even if the live APIs are unavailable.
+The project also includes a **bundled demo mode**, so the full UI can be tested even when live APIs are unavailable.
 
 ---
 
-## How it works in plain English
+## How it works
 
-This is the easiest version to explain in a README, interview, or presentation.
+BioLitGraph is built in four main layers.
 
-### 1) Retrieval layer
+### 1. Retrieval layer
 
-You type a biomedical topic.
+The user enters a biomedical topic.
 
-BioLitGraph sends that topic to **PubMed** using NCBI’s E-utilities API. PubMed returns the PMIDs for the most relevant papers, and then the app fetches summary metadata for those papers.
+BioLitGraph sends that query to **PubMed** using NCBI E-utilities. PubMed returns a set of relevant paper IDs (PMIDs), and the app then fetches summary metadata such as titles, journals, and dates.
 
-At this point, the app knows things like:
+This layer answers:
 
-- which papers matched the query
-- what their titles are
-- which journals they came from
-- when they were published
+- Which papers are most relevant to this topic?
+- What basic information do we want to store for each paper?
 
-### 2) Annotation layer
+### 2. Annotation layer
 
-Next, BioLitGraph sends those PMIDs to **PubTator 3**.
+Once BioLitGraph has PMIDs, it sends them to **PubTator**.
 
-PubTator is an AI-powered biomedical annotation system. It reads the literature and tags important biological concepts such as genes, diseases, chemicals, variants, species, and cell lines.
+PubTator is a biomedical text-mining system that marks important entities inside papers. These entities can include:
 
-For this project, v1 focuses on the entity types that are most useful for a compact literature graph:
+- genes
+- diseases
+- chemicals
+- variants
+- cell lines
 
-- Gene
-- Disease
-- Chemical
-- Variant
-- CellLine
+PubTator also provides normalized identifiers when possible, which helps the app treat repeated mentions as the same concept.
 
-PubTator also tries to normalize mentions into standard identifiers. That matters because papers do not all use the same wording. One paper might say **EGFR**, another might say **epidermal growth factor receptor**, and a third might use a variant description. The app tries to collapse those repeated mentions into one normalized entity node instead of treating them like totally separate things.
+This layer answers:
 
-### 3) Graph layer
+- What biological concepts appear in these papers?
+- Which mentions refer to the same underlying entity?
 
-Once the entities are parsed, the backend turns them into a graph.
+### 3. Graph layer
 
-- **Nodes** = normalized biological entities
-- **Edges** = connections between entities
-- **Edge weight** = number of distinct papers supporting that connection
+After entity extraction, BioLitGraph converts the results into a network.
 
-There are two ways an edge can exist:
+- **Nodes** represent biological entities
+- **Edges** represent connections between entities
 
-1. **Relation edge**: PubTator explicitly extracted a relation.
-2. **Co-occurrence edge**: two entities appear in the same paper, so the app connects them as a weaker signal.
+An edge can come from:
+- a direct extracted relation from PubTator, or
+- co-occurrence within the same paper
 
-The graph builder also filters noise. A giant literature graph can become unreadable very quickly, so v1 keeps only entities and edges that appear in at least **two** papers by default.
+Edge weights are based on supporting papers, so stronger recurring connections become more visible.
 
-### 4) App layer
+This layer answers:
 
-The Flask app sends the final graph data to the browser.
+- Which concepts are central in the topic?
+- Which concepts frequently appear together?
+- What clusters or neighborhoods appear in the literature?
 
-The front end then renders:
+### 4. Interface layer
 
+The final step is presenting the results in a way that is useful.
+
+The app displays:
 - an interactive graph
 - top entities by type
 - top edges by support
 - a publication timeline
-- a details panel that updates when you click a node or edge
-- a paper table with PubMed links
+- a paper table
+- details for selected nodes and edges
 
-The details panel is important because it turns the graph from “pretty network picture” into “something you can actually interpret.”
-
----
-
-## What is happening behind the scenes
-
-If you want a slightly more technical explanation without becoming unreadable, this is the sweet spot.
-
-### PubMed client
-
-The PubMed client does two main jobs:
-
-1. `esearch` — find PMIDs for a query
-2. `esummary` — fetch metadata for those PMIDs
-
-The client includes:
-
-- polite request throttling
-- `tool` and `email` parameters for NCBI requests
-- optional support for an NCBI API key through `.env`
-- JSON parsing into tidy paper records
-
-### PubTator client
-
-The PubTator client requests annotations in **BioC JSON** format. It chunks PMIDs in batches so one run does not try to fetch everything in a single request.
-
-### Parser
-
-The parser walks through PubTator documents and pulls out:
-
-- PMID
-- entity text
-- entity type
-- normalized identifier
-- source passage / section
-- extracted relations, when they exist
-
-### Graph builder
-
-The graph builder aggregates all repeated mentions of the same entity and creates:
-
-- a node table
-- an edge table
-- `node_details` for the front-end details panel
-- `edge_details` for the front-end details panel
-- graph-ready node/edge JSON
-
-### Analytics
-
-The analytics layer adds:
-
-- summary metrics
-- publication timeline counts by year
-- top entities by type
-- strongest edges by support count
-
-### Output files
-
-Each run writes files to `outputs/runs/<run_id>/`, including lightweight diagnostics so you can see how many generic or isolated nodes were filtered before the final graph was rendered.
-
-That makes the app reproducible and inspectable. You can always go back and inspect:
-
-- `papers.csv`
-- `entities.csv`
-- `relations.csv`
-- `graph.json`
-- `bundle.json`
+This makes the literature feel less like a wall of text and more like an explorable map.
 
 ---
 
-## Why the repo is structured this way
+## What kinds of queries work best
 
-This repo is split by responsibility so the project stays readable.
+The strongest queries are usually **focused biomedical combinations**, not overly broad terms.
+
+### Good query patterns
+
+- **gene + disease**  
+  `BRCA1 AND breast cancer`
+
+- **drug + gene + disease**  
+  `(gefitinib OR erlotinib) AND EGFR AND "non-small cell lung cancer"`
+
+- **disease + pathogen**  
+  `"cystic fibrosis" AND "Pseudomonas aeruginosa"`
+
+- **small gene family + disease**  
+  `(APOE OR APP OR PSEN1) AND "Alzheimer disease"`
+
+These work well because they tend to produce coherent literature clusters with recognizable biological entities.
+
+### Weaker query patterns
+
+Very broad queries can create noisy graphs, such as:
+
+- `cancer`
+- `aging`
+- `food AND microbes`
+- `preservatives AND industry`
+
+These are still valid, but they often produce generic high-frequency terms and weaker graph structure.
+
+### Query tips
+
+- Use `AND` for focused combinations
+- Use `OR` for close synonyms
+- Use quotes for multi-word phrases
+- Be careful with `NOT`, since it can remove useful papers too aggressively
+
+---
+
+## Example queries
+
+Try these first:
+
+```text
+BRCA1 AND breast cancer
+TP53 AND acute myeloid leukemia
+(EGFR OR ERBB1) AND "non-small cell lung cancer"
+(gefitinib OR erlotinib) AND EGFR AND "non-small cell lung cancer"
+(APOE OR APP OR PSEN1) AND "Alzheimer disease"
+"cystic fibrosis" AND "Pseudomonas aeruginosa"
+(telomeres OR telomerase) AND aging
+```
+
+---
+
+## Demo mode
+
+BioLitGraph ships with demo data so the interface can be tested immediately.
+
+Use demo mode when:
+- you want to verify the UI quickly
+- live API access is unavailable
+- you want a reliable example for screenshots or presentations
+
+---
+
+## Tech stack
+
+- **Python**
+- **Flask**
+- **Waitress**
+- **PubMed E-utilities**
+- **PubTator**
+- **pandas**
+- **NetworkX**
+- **vis-network / front-end graph rendering**
+- **HTML, CSS, JavaScript**
+
+---
+
+## Repository structure
 
 ```text
 BioLitGraph/
-├─ app.py                    # Flask entry point
-├─ src/
-│  ├─ config.py              # environment variables and paths
-│  ├─ utils.py               # helper utilities like throttling and slugifying
-│  ├─ analytics.py           # summary metrics and timeline prep
-│  ├─ demo.py                # bundled demo dataset loader
-│  ├─ parsers.py             # PubTator BioC JSON parsing
-│  ├─ graph_builder.py       # entity aggregation + graph construction
-│  ├─ pipeline.py            # end-to-end orchestration
-│  └─ clients/
-│     ├─ pubmed_client.py    # PubMed E-utilities calls
-│     └─ pubtator_client.py  # PubTator 3 export calls
-├─ templates/
-│  ├─ base.html
-│  └─ index.html
-├─ static/
-│  ├─ css/styles.css
-│  └─ js/app.js
-├─ data/
-│  ├─ demo/                  # bundled sample dataset for offline testing
-│  ├─ raw/
-│  ├─ interim/
-│  └─ processed/
-├─ outputs/
-│  └─ runs/
-├─ tests/
-│  ├─ test_graph_builder.py
-│  └─ test_parsers.py
-├─ requirements.txt
-└─ README.md
+├── app.py
+├── launcher.py
+├── src/
+│   ├── clients/
+│   ├── graph_builder.py
+│   ├── pipeline.py
+│   ├── parsers.py
+│   └── utils.py
+├── templates/
+├── static/
+├── data/
+│   ├── demo/
+│   ├── raw/
+│   ├── interim/
+│   └── processed/
+├── outputs/
+│   └── runs/
+├── tests/
+├── assets/
+├── README.md
+├── requirements.txt
+├── requirements-build.txt
+├── build_windows.bat
+├── build_macos.sh
+└── BioLitGraph.spec
 ```
-
-This layout makes it obvious where each part of the project lives.
 
 ---
 
-## Why Flask instead of Streamlit
+## Installation
 
-Streamlit is great for quick data apps, but this project uses **Flask + Jinja templates + custom JavaScript** because that gives much more control over the visual design and the interaction model.
+### Windows
 
-That matters here because the graph needs a dedicated details panel, custom click behavior, and a cleaner app-like layout.
-
-So the architecture is:
-
-- **Flask** for routing and server-side rendering
-- **HTML/CSS** for layout and style
-- **vanilla JavaScript** for graph interactions and details panel updates
-- **vis-network** in the browser for the network view
-- **Plotly.js** in the browser for the timeline
-
----
-
-## How to run it
-
-### 1) Clone the repo and create a virtual environment
-
-```bash
-git clone <your-repo-url>
-cd BioLitGraph
-python -m venv .venv
+```bat
+py -m venv .venv
+.venv\Scripts\activate
+py -m pip install -r requirements.txt
+python -m flask --app app run
 ```
 
-### 2) Activate the environment
+Then open:
 
-#### macOS / Linux
+```text
+http://127.0.0.1:5000
+```
+
+### macOS / Linux
 
 ```bash
+python3 -m venv .venv
 source .venv/bin/activate
-```
-
-#### Windows PowerShell
-
-```powershell
-.venv\Scripts\Activate.ps1
-```
-
-#### Windows Command Prompt
-
-```cmd
-.venv\Scripts\activate.bat
-```
-
-### 3) Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 4) Optional: create a `.env` file
-
-```env
-NCBI_EMAIL=your_email@example.com
-NCBI_TOOL=BioLitGraph
-NCBI_API_KEY=your_ncbi_api_key_here
-REQUEST_TIMEOUT=30
-```
-
-You can still run the app without an API key. The key mainly gives higher request limits.
-
-### 5) Start the app
-
-```bash
-flask --app app run
+python -m pip install -r requirements.txt
+python -m flask --app app run
 ```
 
 Then open:
@@ -277,115 +277,89 @@ http://127.0.0.1:5000
 
 ---
 
-## First thing to test
+## Packaged desktop builds
 
-Use **demo mode** first.
+BioLitGraph can also be packaged as a local desktop app.
 
-Why? Because it proves that the front end, graph building, details panel, timeline, and table rendering all work before you touch the live APIs.
-
-Then switch to **live mode** and try one of these:
-
-- `EGFR AND non-small cell lung cancer`
-- `APOE AND Alzheimer disease`
-- `TP53 AND acute myeloid leukemia`
-- `BRCA1 AND breast cancer`
-
----
-
-## What a good v1 run should produce
-
-A successful run should give you:
-
-- a graph with a readable number of nodes and edges
-- a timeline with year counts
-- top entities grouped by type
-- top edges ranked by supporting papers
-- a paper table with PubMed links
-- saved CSV and JSON outputs in the run folder
-
-If the graph looks too dense, reduce noise by:
-
-- lowering the paper limit
-- using a more specific query
-- raising the minimum node or edge support threshold in `GraphBuilder`
-
----
-
-## Limitations of v1
-
-This version is intentionally focused.
-
-- It does **not** use full-text PMC parsing yet.
-- It does **not** compare multiple queries side by side yet.
-- It does **not** do advanced ontology merging across every weird biomedical synonym.
-- It does **not** store runs in a database yet.
-- It assumes PubTator returns a compatible BioC JSON structure for the export endpoint.
-
-That is fine. The goal of v1 is to be clear, useful, and shippable.
-
----
-
-## Possible next upgrades
-
-Once the project is stable, the next logical upgrades are:
-
-- side-by-side query comparison
-- journal filters
-- year sliders
-- subgraph export
-- centrality metrics
-- community detection
-- SQLite or Postgres persistence
-- background job queue for bigger literature pulls
-- report export for a chosen topic
-
----
-
-## Resume bullets you can pull from this
-
-- Built a biomedical literature mining application that converts PubMed search results into interactive knowledge graphs using PubTator annotations.
-- Implemented a Python pipeline for metadata retrieval, biomedical entity parsing, normalization-aware graph construction, and exportable CSV/JSON outputs.
-- Designed a custom Flask front end for exploring gene–disease–chemical–variant relationships, publication timelines, and supporting evidence across the literature.
-
----
-
-## Notes on the bundled demo
-
-The included demo dataset is a **small synthetic sample** inspired by the EGFR/NSCLC literature. It exists so the UI and graph logic can be tested instantly without depending on live external services.
-
-
-## Desktop packaging (.exe and .app)
-
-BioLitGraph includes a desktop launcher so you can package it as a clickable app.
-
-### Windows build
+### Build Windows executable
 
 ```bat
 build_windows.bat
 ```
 
-This creates:
-
-```text
-dist\BioLitGraph\BioLitGraph.exe
-```
-
-### macOS build
+### Build macOS app bundle
 
 ```bash
+chmod +x build_macos.sh
 ./build_macos.sh
 ```
 
-This creates:
+Packaged builds use a local server with **Waitress** and automatically open in the browser.
 
-```text
-dist/BioLitGraph.app
-```
+---
 
-### Where packaged runs are saved
+## Outputs
 
-Packaged builds store outputs in a user-writable folder instead of inside the app bundle:
+Each run can generate structured outputs such as:
 
-- **Windows:** `%LOCALAPPDATA%\BioLitGraph`
+- paper metadata tables
+- extracted entity tables
+- edge tables
+- JSON summaries
+
+These outputs make the project useful both as an interactive app and as a reproducible data-processing pipeline.
+
+---
+
+## What this project demonstrates
+
+BioLitGraph was designed to show more than front-end polish.
+
+It demonstrates:
+
+- biomedical API integration
+- biomedical NLP workflow design
+- entity normalization
+- graph construction and filtering
+- scientific data modeling
+- local web app packaging
+- practical thinking about noisy real-world data
+
+---
+
+## Limitations
+
+BioLitGraph is a literature exploration tool, not a truth machine.
+
+A few important limitations:
+
+- it depends on external APIs
+- broad or vague queries can still produce noisy results
+- entity extraction quality depends on PubTator output
+- co-occurrence does **not** automatically mean biological causation
+- the tool is meant to support reading and exploration, not replace scientific interpretation
+
+---
+
+## Future improvements
+
+Planned or possible next steps include:
+
+- filtering by year
+- filtering by entity type
+- richer node and edge inspection
+- exportable snapshots or reports
+- stronger abbreviation handling
+- better edge-type explanations
+- multi-query comparison
+
+---
+
+## Resume-style summary
+
+> Built a biomedical literature mining pipeline that retrieves PubMed papers, extracts normalized biological entities using PubTator, and converts them into interactive knowledge graphs for topic exploration.
+
+
+
 - **macOS:** `~/Library/Application Support/BioLitGraph`
 - **Linux:** `~/.local/share/BioLitGraph`
